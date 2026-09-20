@@ -162,7 +162,7 @@ retain purchased names, sizes, colors and prices after product edits.
 The admin tests cover validation, duplicate variants, deactivation, stale stock
 edits and preservation of order details.
 
-## Local product photos
+## Product photos
 
 The `product_images` table stores uploaded image URLs and display order. Existing
 `products.image_url` values remain as a fallback when no uploads exist. Uploaded
@@ -170,7 +170,8 @@ photos take priority on the public product API; the first photo is the cover.
 
 Authenticated endpoints:
 - `POST /api/admin/products/:productId/images`: multipart field `images`, up to
-  six files and six uploaded photos total per product, 5 MiB per file.
+  six uploaded photos total per product. The client sends one file per request,
+  with a 3.5 MiB limit, to stay below Vercel's Function request-body limit.
 - `PATCH /api/admin/products/:productId/images/:imageId/main`: select cover photo.
 - `DELETE /api/admin/products/:productId/images/:imageId`: delete a photo and file.
 
@@ -180,11 +181,19 @@ Uploads use [Multer](https://expressjs.com/en/resources/middleware/multer/) and
 [Sharp](https://sharp.pixelplumbing.com/api-constructor/).
 Photo mutations lock the product row to enforce the total during concurrent uploads.
 
-Files are stored in `server/uploads/products` (excluded from Git), served at
-`/api/uploads/products`. Back up this directory together with PostgreSQL. Deployment
-must mount persistent storage here, or replace local storage with object storage;
-ephemeral deployment filesystems will lose images. Normal server restarts preserve
-files. Legacy external image URLs are not deleted when removing uploaded images.
+When `BLOB_READ_WRITE_TOKEN`, `BLOB_STORE_ID`, or the Vercel runtime is present,
+processed images are stored in public Vercel Blob storage and their permanent URLs
+are saved in PostgreSQL. Local development falls back to
+`server/uploads/products` (excluded from Git), served at `/api/uploads/products`.
+Legacy external image URLs are not deleted when removing uploaded images.
+
+## Vercel deployment
+
+The Vercel function entry point is `api/index.js`. `vercel-build` applies committed
+Prisma migrations to the connected Supabase database. Connect the Supabase and
+Vercel Blob resources to the backend project before deploying; their managed
+environment variables are used automatically. The production frontend proxies
+same-origin `/api/*` requests to the backend through `client/vercel.json`.
 
 Installation audit reported four high-severity entries in Prisma CLI transitive
 dependencies (deepmerge-ts and mysql2 and their dependents). No forced major

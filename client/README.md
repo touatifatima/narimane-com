@@ -36,15 +36,17 @@ an explicit placeholder. The decorative hero is not a representation of inventor
 - Orders: search/filter, detail, status updates, cancellation before shipping.
 - Products: create/edit, variants, activation and safe stock updates.
 - Photos: after saving a new product, select local files in its editor, preview,
-  upload, choose a cover, or remove them. Up to six JPG/PNG/WebP photos at 5 MiB
-  each. The public product detail shows selectable thumbnails.
+  upload, choose a cover, or remove them. Up to six JPG/PNG/WebP photos at 3.5 MiB
+  each. Production images are stored in Vercel Blob. The public product detail
+  shows selectable thumbnails.
 - Delivery: set fees by wilaya code, enable/disable delivery.
 - Collection search/sorting applies to loaded products; load more to expand it.
 - Actual prices and availability are verified by the backend at checkout.
 
-`npm run build` creates `dist`. For deployment serve the API under `/api` on the
-same origin, or configure `VITE_API_URL` before building and set server `CLIENT_URL`
-to the frontend origin. Google Fonts has system/Georgia fallbacks.
+`npm run build` creates `dist`. The production Vercel configuration proxies `/api`
+to the deployed backend, keeping requests same-origin. For another host, configure
+`VITE_API_URL` before building and set server `CLIENT_URL` to the frontend origin.
+Google Fonts has system/Georgia fallbacks.
 
 ## Checks
 
