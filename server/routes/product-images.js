@@ -15,12 +15,26 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { files: 1, fil
     next(['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype) ? null : new ImageError(400, 'Utilisez des images JPG, PNG ou WebP.'), true);
   },
 }).array('images', 1);
+const blobAuth = () => process.env.BLOB_READ_WRITE_TOKEN
+  ? { token: process.env.BLOB_READ_WRITE_TOKEN }
+  : {};
 async function storeFile(name, buffer) {
   if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID || process.env.VERCEL) {
-    const blob = await put(`products/${name}`, buffer, {
-      access: 'public', contentType: 'image/webp', addRandomSuffix: false,
-    });
-    return blob.url;
+    try {
+      const blob = await put(`products/${name}`, buffer, {
+        access: 'public', contentType: 'image/webp', addRandomSuffix: false,
+        ...blobAuth(),
+      });
+      return blob.url;
+    } catch (error) {
+      console.error('Product image Blob upload failed:', {
+        name: error.name, code: error.code, message: error.message,
+        hasStoreId: Boolean(process.env.BLOB_STORE_ID),
+        hasOidc: Boolean(process.env.VERCEL_OIDC_TOKEN),
+        hasReadWriteToken: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
+      });
+      throw error;
+    }
   }
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(path.join(directory, name), buffer, { flag: 'wx' });
@@ -28,7 +42,7 @@ async function storeFile(name, buffer) {
 }
 async function removeFile(url) {
   if (/^https:\/\/[^/]+\.blob\.vercel-storage\.com\//.test(url)) {
-    await del(url).catch(() => console.error('Could not remove unused product image from Blob.'));
+    await del(url, blobAuth()).catch(error => console.error('Could not remove unused product image from Blob:', error.name));
     return;
   }
   const name = url.split('/').pop();
