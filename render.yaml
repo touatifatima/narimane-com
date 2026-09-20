@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: teestore-ecommerce
+    runtime: node
+    plan: free
+    buildCommand: cd client && npm ci && npm run build && cd ../server && npm ci
+    startCommand: cd server && npm run db:deploy && npm start
+    healthCheckPath: /api/health/db
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: teestore-postgres
+          property: connectionString
+      - key: NODE_VERSION
+        value: 22.21.1
+
+databases:
+  - name: teestore-postgres
+    plan: free
+    databaseName: tshirt_store
+    user: teestore

@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 const productRoutes = require('./routes/products');
 
 module.exports = function createApp(prisma) {
@@ -34,6 +36,18 @@ module.exports = function createApp(prisma) {
     });
     res.json({ delivery_rates: rates.map(rate => ({ ...rate, fee: rate.fee.toFixed(2), currency: 'DZD' })) });
   });
+
+  const clientDist = path.resolve(__dirname, '../client/dist');
+  if (fs.existsSync(clientDist)) {
+    app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
+    app.use((req, res, next) => {
+      if (req.method === 'GET' && !req.path.startsWith('/api/')) {
+        return res.sendFile(path.join(clientDist, 'index.html'));
+      }
+      next();
+    });
+  }
+
   app.use((req, res) => res.status(404).json({ error: 'Route not found.' }));
   app.use((error, req, res, next) => {
     if (error.type === 'entity.parse.failed') {
