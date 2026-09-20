@@ -17,4 +17,6 @@ async function start() {
   }
 }
 
-start();
+if (require.main === module && !process.env.VERCEL) start();
+
+module.exports = app;

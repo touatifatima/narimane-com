@@ -6,6 +6,7 @@ const productRoutes = require('./routes/products');
 
 module.exports = function createApp(prisma) {
   const app = express();
+  if (process.env.VERCEL) app.set('trust proxy', 1);
   app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
   app.use(express.json());
   app.use('/api/uploads/products', express.static(require('./routes/product-images').directory, {
@@ -21,7 +22,8 @@ module.exports = function createApp(prisma) {
     try {
       await prisma.$queryRaw`SELECT 1`;
       res.json({ status: 'ok', database: 'connected' });
-    } catch {
+    } catch (error) {
+      console.error('Database health check failed:', error.code || error.name);
       res.status(503).json({ status: 'error', database: 'unavailable' });
     }
   });
@@ -56,7 +58,7 @@ module.exports = function createApp(prisma) {
     if (error.type === 'entity.too.large') {
       return res.status(413).json({ error: 'Request body is too large.' });
     }
-    console.error('API request failed.');
+    console.error('API request failed:', error.code || error.name);
     res.status(500).json({ error: 'Unable to process the request. Please try again.' });
   });
   return app;
