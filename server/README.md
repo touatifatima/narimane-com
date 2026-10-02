@@ -195,6 +195,25 @@ Vercel Blob resources to the backend project before deploying; their managed
 environment variables are used automatically. The production frontend proxies
 same-origin `/api/*` requests to the backend through `client/vercel.json`.
 
+### Supabase Storage for deployment
+
+Create a public bucket named `product-images` in Supabase Storage. Then add these
+variables to the server environment (the service-role key belongs only on the
+server, never in the React client):
+
+```env
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+SUPABASE_STORAGE_BUCKET=product-images
+```
+
+When these variables exist, uploads and deletes use Supabase Storage and database
+rows contain public Supabase URLs. Without them, local development keeps using
+`server/uploads/products`. The bucket should be public for customer reads, while
+the service-role key keeps writes behind the authenticated admin API. Do not add
+anonymous upload or delete policies. Supabase Storage bucket-level restrictions
+should allow `image/jpeg`, `image/png`, and `image/webp`, with a 5 MiB limit.
+
 Installation audit reported four high-severity entries in Prisma CLI transitive
 dependencies (deepmerge-ts and mysql2 and their dependents). No forced major
 downgrade or dependency override was applied. Review upstream fixes before deployment.

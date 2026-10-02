@@ -1,54 +1,16 @@
 ﻿const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
-const fs = require('node:fs/promises');
-const path = require('node:path');
-const { randomUUID } = require('node:crypto');
-const { put, del } = require('@vercel/blob');
-const directory = path.join(__dirname, '../uploads/products');
+const storage = require('../storage');
 const ordered = { orderBy: [{ position: 'asc' }, { id: 'asc' }] };
 class ImageError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
-const upload = multer({ storage: multer.memoryStorage(), limits: { files: 1, fileSize: 3.5 * 1024 * 1024, fields: 0, parts: 2 },
+const upload = multer({ storage: multer.memoryStorage(), limits: { files: 6, fileSize: 5 * 1024 * 1024, fields: 0, parts: 7 },
   fileFilter(req, file, next) {
     next(['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype) ? null : new ImageError(400, 'Utilisez des images JPG, PNG ou WebP.'), true);
   },
-}).array('images', 1);
-const blobAuth = () => process.env.BLOB_READ_WRITE_TOKEN
-  ? { token: process.env.BLOB_READ_WRITE_TOKEN }
-  : {};
-async function storeFile(name, buffer) {
-  if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID || process.env.VERCEL) {
-    try {
-      const blob = await put(`products/${name}`, buffer, {
-        access: 'public', contentType: 'image/webp', addRandomSuffix: false,
-        ...blobAuth(),
-      });
-      return blob.url;
-    } catch (error) {
-      console.error('Product image Blob upload failed:', {
-        name: error.name, code: error.code, message: error.message,
-        hasStoreId: Boolean(process.env.BLOB_STORE_ID),
-        hasOidc: Boolean(process.env.VERCEL_OIDC_TOKEN),
-        hasReadWriteToken: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
-      });
-      throw error;
-    }
-  }
-  await fs.mkdir(directory, { recursive: true });
-  await fs.writeFile(path.join(directory, name), buffer, { flag: 'wx' });
-  return `/api/uploads/products/${name}`;
-}
-async function removeFile(url) {
-  if (/^https:\/\/[^/]+\.blob\.vercel-storage\.com\//.test(url)) {
-    await del(url, blobAuth()).catch(error => console.error('Could not remove unused product image from Blob:', error.name));
-    return;
-  }
-  const name = url.split('/').pop();
-  if (!/^[a-f0-9-]{36}\.webp$/.test(name)) return;
-  await fs.unlink(path.join(directory, name)).catch(error => { if (error.code !== 'ENOENT') console.error('Could not remove unused product image.'); });
-}
+}).array('images', 6);
 module.exports = function imageRoutes(db) {
   const router = express.Router({ mergeParams: true });
   router.use((req, res, next) => {
@@ -80,15 +42,15 @@ module.exports = function imageRoutes(db) {
         if (existing.length + buffers.length > 6) throw new ImageError(409, 'Maximum 6 photos par produit.');
         let position = existing.length ? existing.at(-1).position + 1 : 0;
         for (const buffer of buffers) {
-          const name = `${randomUUID()}.webp`;
-          const url = await storeFile(name, buffer);
+          const saved = await storage.save(buffer, Number(req.params.productId));
+          const url = saved.url;
           written.push(url);
           await tx.product_images.create({ data: { product_id: Number(req.params.productId), url, position: position++ } });
         }
         return tx.product_images.findMany({ where: { product_id: Number(req.params.productId) }, ...ordered });
       });
       res.status(201).json({ images });
-    } catch (error) { await Promise.all(written.map(removeFile)); throw error; }
+    } catch (error) { await Promise.all(written.map(url => storage.remove(url).catch(() => {}))); throw error; }
   });
   router.patch('/:imageId/main', async (req, res) => {
     const id = Number(req.params.imageId);
@@ -112,15 +74,15 @@ module.exports = function imageRoutes(db) {
       await tx.product_images.delete({ where: { id } });
       return { url: image.url, images: await tx.product_images.findMany({ where: { product_id: Number(req.params.productId) }, ...ordered }) };
     });
-    await removeFile(result.url);
+    await storage.remove(result.url);
     res.json({ images: result.images });
   });
   router.use((error, req, res, next) => {
-    if (error instanceof multer.MulterError) return res.status(400).json({ error: 'Importez une photo à la fois, 3,5 Mo maximum. Champ attendu : images.' });
+    if (error instanceof multer.MulterError) return res.status(400).json({ error: 'Maximum 6 photos, 5 Mo par photo. Champ attendu : images.' });
     if (error instanceof ImageError) return res.status(error.status).json({ error: error.message });
     next(error);
   });
   return router;
 };
-module.exports.directory = directory;
+module.exports.directory = storage.directory;
 
