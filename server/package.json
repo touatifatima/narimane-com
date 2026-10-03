@@ -13,6 +13,7 @@
                     "test:products":  "node scripts/check-products.js",
                     "test:orders":  "node scripts/check-orders.js",
                     "admin:create":  "node scripts/create-admin.js",
+                    "db:seed-rates":  "node scripts/seed-delivery-rates.js",
                     "test:admin":  "node scripts/check-admin.js",
                     "postinstall":  "prisma generate"
                 },
