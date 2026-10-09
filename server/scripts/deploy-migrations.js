@@ -5,7 +5,7 @@ if (process.env.SKIP_DB_MIGRATIONS === '1') {
   process.exit(0);
 }
 
-const connectionString = process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL;
+const connectionString = process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL;
 if (!connectionString) {
   console.error('Supabase database environment variables are missing.');
   process.exit(1);

@@ -143,3 +143,11 @@ model delivery_rates {
   is_active   Boolean  @default(true)
   created_at  DateTime @default(now()) @db.Timestamptz(6)
 }
+
+model rate_limit_buckets {
+  key String @id
+  hits Int @default(0)
+  expires_at DateTime @db.Timestamptz(6)
+
+  @@index([expires_at])
+}

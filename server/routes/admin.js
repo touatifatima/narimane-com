@@ -1,6 +1,6 @@
 const express = require('express');
 const { randomBytes, createHash } = require('node:crypto');
-const { rateLimit } = require('express-rate-limit');
+const { limiter: sharedLimiter } = require('../lib/rate-limits');
 const { verifyPassword } = require('../lib/passwords');
 const digest = token => createHash('sha256').update(token).digest('hex');
 const transitions = {
@@ -16,10 +16,8 @@ const orderSelect = {
 module.exports = function adminRoutes(db) {
   const router = express.Router();
   router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
-  const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10,
-    standardHeaders: 'draft-7', legacyHeaders: false,
-    message: { error: 'Too many login attempts. Try again in 15 minutes.' },
-  });
+  const limiter = sharedLimiter(db, 'login', 10, 15 * 60 * 1000,
+    'Too many login attempts. Try again in 15 minutes.');
   router.post('/login', limiter, async (req, res) => {
     const { email, password } = req.body || {};
     if (typeof email !== 'string' || email.length > 254 || typeof password !== 'string' || password.length < 1 || password.length > 128) {

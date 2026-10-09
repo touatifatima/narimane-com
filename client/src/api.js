@@ -9,7 +9,9 @@ export async function api(path, { token, body, headers, ...options } = {}) {
   });
   const data = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(data?.error || 'Le serveur est indisponible. Réessayez dans un instant.');
+    const error = new Error(data?.error || (response.status === 413
+      ? 'La photo est trop volumineuse. Maximum 3,5 Mo par photo.'
+      : 'Le serveur est indisponible. Réessayez dans un instant.'));
     error.status = response.status;
     throw error;
   }

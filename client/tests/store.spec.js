@@ -119,7 +119,16 @@ test('desktop cart, checkout and admin order flow', async ({ page }) => {
     await page.getByRole('button', { name: 'Supprimer', exact: true }).first().click();
     await expect(page.getByRole('button', { name: 'Supprimer', exact: true })).toHaveCount(1 - i);
   }
-  expect((await page.request.get(uploaded.images[0].url)).status()).toBe(404);
+  // Public storage URLs can remain cached after deletion. Check the source of truth.
+  expect(await db.product_images.count({ where: { product_id: uploaded.id } })).toBe(0);
+  for (const photo of uploaded.images) {
+    if (photo.url.includes('/storage/v1/object/public/product-images/')) {
+      const key = decodeURIComponent(photo.url.split('/storage/v1/object/public/product-images/')[1]);
+      expect(await db.$queryRaw`SELECT name FROM storage.objects WHERE bucket_id = 'product-images' AND name = ${key}`).toHaveLength(0);
+    } else {
+      expect((await page.request.get(photo.url)).status()).toBe(404);
+    }
+  }
   const batch = new FormData();
   for (let i = 0; i < 6; i++) batch.append('images', new Blob([imageBuffer], { type: 'image/png' }), `photo-${i}.png`);
   const six = await fetch(`http://localhost:5180/api/admin/products/${uploaded.id}/images`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: batch });
@@ -129,7 +138,7 @@ test('desktop cart, checkout and admin order flow', async ({ page }) => {
   expect(seventh.status()).toBe(409);
   for (const photo of sixImages) expect((await page.request.delete(`/api/admin/products/${uploaded.id}/images/${photo.id}`, { headers: { Authorization: `Bearer ${token}` } })).status()).toBe(200);
   const oversized = await page.request.post(`/api/admin/products/${uploaded.id}/images`, { headers: { Authorization: `Bearer ${token}` }, multipart: { images: { name: 'large.png', mimeType: 'image/png', buffer: Buffer.alloc(5 * 1024 * 1024 + 1) } } });
-  expect(oversized.status()).toBe(400);
+  expect(oversized.status()).toBe(413);
   await page.getByRole('button', { name: 'Retour aux produits' }).click();
   await expect(page.getByRole('cell', { name: `${marker}-created`, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Livraison', exact: true }).click();

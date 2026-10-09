@@ -243,3 +243,29 @@ parcel has physically returned. It restores all ordered quantities once, like
 cancellation. `returned` is final. This assumes a complete, resellable return;
 partial/damaged returns and carrier integration are not implemented. A failed
 delivery attempt alone must not be marked returned. No automatic carrier updates.
+
+## Launch hardening (October 2026)
+
+Run migrations before starting the updated backend. The rate_limit_buckets table
+uses RLS and has no anon/authenticated grants. Login allows 10 attempts per IP
+per 15 minutes; checkout allows 20 per IP per 15 minutes. Counters are atomic and
+shared through PostgreSQL across Vercel instances. This reduces automated abuse;
+it does not verify that a cash-on-delivery order is genuine. Database failures
+fail closed. RATE_LIMIT_NAMESPACE isolates test runs; leave it unset in production.
+Expired counters are removed opportunistically. Run npm run test:rate-limits.
+
+Photos are limited to 3.5 MiB each and the frontend uploads one at a time. The
+API rejects requests above 4 MiB when Content-Length is available, below Vercel's
+request cap. Supabase Storage must be configured on Vercel; filesystem uploads
+are for local development only.
+
+The frontend proxy targets https://tshirt-ecommerce-server.vercel.app. Keep
+VITE_API_URL unset to use this proxy, or set it to that same backend URL. Set
+CLIENT_URL on the backend to https://tshirt-ecommerce-client.vercel.app.
+Deploy backend first, then frontend, and verify checkout and admin login.
+Use separate databases for preview deployments; builds apply migrations.
+
+Never put working credentials in .env.example. Rotate any credential copied
+there and update both the local .env and Vercel backend environment.
+Dependency overrides pin patched deepmerge-ts and mysql2 transitive packages
+until Prisma incorporates those releases; recheck them when upgrading Prisma.

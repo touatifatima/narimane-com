@@ -6,7 +6,7 @@ const ordered = { orderBy: [{ position: 'asc' }, { id: 'asc' }] };
 class ImageError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
-const upload = multer({ storage: multer.memoryStorage(), limits: { files: 6, fileSize: 5 * 1024 * 1024, fields: 0, parts: 7 },
+const upload = multer({ storage: multer.memoryStorage(), limits: { files: 6, fileSize: 3.5 * 1024 * 1024, fields: 0, parts: 7 },
   fileFilter(req, file, next) {
     next(['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype) ? null : new ImageError(400, 'Utilisez des images JPG, PNG ou WebP.'), true);
   },
@@ -24,7 +24,11 @@ module.exports = function imageRoutes(db) {
       return work(tx);
     }, { timeout: 15000 });
   }
-  router.post('/', upload, async (req, res) => {
+  router.post('/', (req, res, next) => {
+    const size = Number(req.get('content-length'));
+    if (size > 4 * 1024 * 1024) return res.status(413).json({ error: 'Importez les photos une par une (3,5 Mo maximum par photo).' });
+    next();
+  }, upload, async (req, res) => {
     if (!req.files?.length) throw new ImageError(400, 'Sélectionnez au moins une photo.');
     const buffers = [];
     for (const file of req.files) {
@@ -78,7 +82,7 @@ module.exports = function imageRoutes(db) {
     res.json({ images: result.images });
   });
   router.use((error, req, res, next) => {
-    if (error instanceof multer.MulterError) return res.status(400).json({ error: 'Maximum 6 photos, 5 Mo par photo. Champ attendu : images.' });
+    if (error instanceof multer.MulterError) return res.status(400).json({ error: 'Maximum 6 photos, 3,5 Mo par photo. Champ attendu : images.' });
     if (error instanceof ImageError) return res.status(error.status).json({ error: error.message });
     next(error);
   });

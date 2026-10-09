@@ -1,3 +1,4 @@
+process.env.RATE_LIMIT_NAMESPACE = `test-${require('node:crypto').randomUUID()}`;
 const assert = require('node:assert/strict');
 const { randomUUID, createHash } = require('node:crypto');
 const { once } = require('node:events');

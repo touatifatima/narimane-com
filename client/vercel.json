@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://thread-teestore-api-mocha.vercel.app/api/:path*"
+      "destination": "https://tshirt-ecommerce-server.vercel.app/api/:path*"
     },
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/admin/", "destination": "/index.html" }

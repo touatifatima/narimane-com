@@ -1,6 +1,7 @@
 const express = require('express');
 const { createHash } = require('node:crypto');
 const { Prisma } = require('@prisma/client');
+const { limiter } = require('../lib/rate-limits');
 
 class CheckoutError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -50,7 +51,8 @@ function confirmation(order) {
 
 module.exports = function orderRoutes(db) {
   const router = express.Router();
-  router.post('/', async (req, res, next) => {
+  router.post('/', limiter(db, 'checkout', 20, 15 * 60 * 1000,
+    'Too many checkout attempts. Please try again in 15 minutes.'), async (req, res, next) => {
     try {
       const key = req.get('Idempotency-Key');
       if (!key || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key)) {
