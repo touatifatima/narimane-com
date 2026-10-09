@@ -61,6 +61,9 @@ test('desktop cart, checkout and admin order flow', async ({ page }) => {
   await page.getByLabel('Mot de passe').fill(password);
   await page.getByRole('button', { name: 'Se connecter' }).click();
   await expect(page.getByRole('heading', { name: 'Les commandes' })).toBeVisible();
+  await page.getByRole('checkbox', { name: `Sélectionner la commande ${order.id}` }).check();
+  await expect(page.getByRole('button', { name: 'Supprimer la sélection' })).toBeVisible();
+  await page.getByRole('checkbox', { name: `Sélectionner la commande ${order.id}` }).uncheck();
   await page.getByRole('button', { name: /Notifications, .* non lues/ }).click();
   await page.locator('.notification-item').filter({ hasText: `Commande #${order.id}` }).click();
   await expect(page.getByRole('heading', { name: `Commande #${order.id}`, exact: true })).toBeVisible();
@@ -141,6 +144,10 @@ test('desktop cart, checkout and admin order flow', async ({ page }) => {
   expect(oversized.status()).toBe(413);
   await page.getByRole('button', { name: 'Retour aux produits' }).click();
   await expect(page.getByRole('cell', { name: `${marker}-created`, exact: true })).toBeVisible();
+  await page.getByRole('checkbox', { name: `Sélectionner ${marker}-created` }).check();
+  await expect(page.getByRole('button', { name: 'Supprimer la sélection' })).toBeVisible();
+  await page.getByRole('checkbox', { name: `Sélectionner ${marker}-created` }).uncheck();
+  await expect(page.getByRole('button', { name: 'Supprimer la sélection' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Livraison', exact: true }).click();
   await expect(page.getByRole('cell', { name: `${rate.wilaya_code} — ${marker}` })).toBeVisible();
   await page.getByLabel('Code wilaya').fill(rate.wilaya_code);

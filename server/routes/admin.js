@@ -74,6 +74,42 @@ module.exports = function adminRoutes(db) {
       orderBy: { id: 'desc' }, skip: (page - 1) * 20, take: 21 });
     res.json({ orders: orders.slice(0, 20), pagination: { page, limit: 20, has_more: orders.length > 20 } });
   });
+  router.post('/orders/bulk-delete', async (req, res) => {
+    const ids = req.body?.ids;
+    if (!Array.isArray(ids) || ids.length < 1 || ids.length > 20
+      || ids.some(id => !Number.isInteger(id) || id < 1 || id > 2147483647)
+      || new Set(ids).size !== ids.length || Object.keys(req.body).some(key => key !== 'ids')) {
+      return res.status(400).json({ error: 'Select between 1 and 20 distinct orders.' });
+    }
+    try {
+      const result = await db.$transaction(async tx => {
+        const orders = await tx.orders.findMany({ where: { id: { in: ids } },
+          select: { id: true, status: true, order_items: { select: { variant_id: true, quantity: true } } } });
+        if (orders.length !== ids.length) return { error: 'One or more orders no longer exist. Refresh the list.', status: 404 };
+        const stockToRestore = new Map();
+        for (const order of orders) {
+          if (order.status === 'new' || order.status === 'confirmed') {
+            for (const item of order.order_items) {
+              stockToRestore.set(item.variant_id, (stockToRestore.get(item.variant_id) || 0) + item.quantity);
+            }
+          }
+        }
+        for (const [variantId, quantity] of [...stockToRestore].sort((a, b) => a[0] - b[0])) {
+          await tx.product_variants.update({ where: { id: variantId }, data: { stock: { increment: quantity } } });
+        }
+        await tx.order_items.deleteMany({ where: { order_id: { in: ids } } });
+        // Notifications and their read receipts cascade from the orders table.
+        const deleted = await tx.orders.deleteMany({ where: { id: { in: ids } } });
+        if (deleted.count !== ids.length) throw new Error('Orders changed during deletion.');
+        return { deleted: deleted.count, restocked: orders.filter(order => ['new', 'confirmed'].includes(order.status)).length };
+      }, { isolationLevel: 'Serializable', timeout: 15000 });
+      if (result.error) return res.status(result.status).json({ error: result.error });
+      res.json(result);
+    } catch (error) {
+      if (error.code === 'P2034') return res.status(409).json({ error: 'Orders changed. Refresh and try again.' });
+      throw error;
+    }
+  });
   router.param('id', (req, res, next, value) => {
     if (!/^[1-9]\d*$/.test(value) || Number(value) > 2147483647) return res.status(400).json({ error: 'Invalid order ID.' });
     req.orderId = Number(value);

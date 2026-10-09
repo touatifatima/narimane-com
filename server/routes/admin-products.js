@@ -1,4 +1,5 @@
 const express = require('express');
+const storage = require('../storage');
 
 class InputError extends Error {}
 function object(body, allowed) {
@@ -69,6 +70,33 @@ module.exports = function adminProducts(db) {
       include, orderBy: { id: 'desc' }, skip: (Number(page) - 1) * 20, take: 21 });
     res.json({ products: products.slice(0, 20).map(serialize), pagination: { page: Number(page), limit: 20, has_more: products.length > 20 } });
   });
+  router.post('/bulk-delete', async (req, res) => {
+    object(req.body, ['ids']);
+    const ids = req.body.ids;
+    if (!Array.isArray(ids) || ids.length < 1 || ids.length > 20
+      || ids.some(id => !Number.isInteger(id) || id < 1 || id > 2147483647)
+      || new Set(ids).size !== ids.length) throw new InputError('Select between 1 and 20 distinct products.');
+
+    const result = await db.$transaction(async tx => {
+      const products = await tx.products.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true, images: { select: { url: true } } },
+      });
+      if (products.length !== ids.length) return { status: 404, error: 'One or more products no longer exist. Refresh the list.' };
+      const used = await tx.order_items.findFirst({
+        where: { product_variants: { product_id: { in: ids } } }, select: { variant_id: true },
+      });
+      if (used) return { status: 409, error: 'Un de ces produits figure dans une commande. Masquez-le plutôt pour conserver l’historique.' };
+      await tx.product_variants.deleteMany({ where: { product_id: { in: ids } } });
+      await tx.products.deleteMany({ where: { id: { in: ids } } });
+      return { deleted: products.length, urls: products.flatMap(product => product.images.map(image => image.url)) };
+    });
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    const removed = await Promise.allSettled(result.urls.map(url => storage.remove(url)));
+    const failedImages = removed.filter(item => item.status === 'rejected').length;
+    if (failedImages) console.error('Some deleted product image files could not be removed:', failedImages);
+    res.json({ deleted: result.deleted, failed_images: failedImages });
+  });
   router.get('/:productId', async (req, res) => {
     const product = await db.products.findUnique({ where: { id: Number(req.params.productId) }, include });
     if (!product) return res.status(404).json({ error: 'Product not found.' });
@@ -111,7 +139,8 @@ module.exports = function adminProducts(db) {
   router.use((error, req, res, next) => {
     if (error instanceof InputError) return res.status(400).json({ error: error.message });
     if (error.code === 'P2002') return res.status(409).json({ error: 'That size and color combination already exists.' });
-    if (['P2025', 'P2003'].includes(error.code)) return res.status(404).json({ error: 'Product or variant not found.' });
+    if (error.code === 'P2003') return res.status(409).json({ error: 'A product is referenced by an order and cannot be deleted.' });
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Product or variant not found.' });
     next(error);
   });
   return router;
