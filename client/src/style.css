@@ -244,3 +244,22 @@ footer .wordmark{font-size:26px}
 :root[data-theme="dark"] .admin-layout .badge.shipped{background:#293b43;color:#b7d9e7}
 :root[data-theme="dark"] .admin-layout .badge.returned{background:#443728;color:#e7cdab}
 @media(max-width:420px){.admin-header-actions{gap:8px}.admin-header-actions>span{font-size:8px;letter-spacing:.08em}}
+.store-footer{display:block}
+.footer-contact{display:grid;grid-template-columns:1fr 1.3fr;gap:48px;align-items:center;padding-bottom:40px}
+.footer-contact-intro h2{font-size:clamp(30px,3vw,42px);max-width:390px}
+.footer-contact-intro p{font-size:13px;max-width:370px;margin-bottom:0}
+.footer-contact-intro .eyebrow{color:var(--olive);margin-bottom:16px}
+.footer-contact-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.footer-contact-card{display:flex;align-items:center;gap:12px;min-width:0;padding:18px 14px;border:1px solid var(--line);border-radius:12px;transition:background .2s,border-color .2s}
+.footer-contact-card:hover{background:var(--cream);border-color:var(--olive)}
+.footer-contact-icon{display:grid;place-items:center;flex-shrink:0;width:38px;height:38px;background:var(--cream);color:var(--olive);border-radius:50%}
+.footer-contact-text{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+.footer-contact-text strong{font-size:13px;font-weight:500}
+.footer-contact-text>span{font-size:11px;color:var(--muted);overflow-wrap:anywhere;line-height:1.5}
+.footer-contact-card>svg{flex-shrink:0;color:var(--muted)}
+.footer-bottom{display:flex;align-items:center;justify-content:space-between;gap:24px;border-top:1px solid var(--line);padding-top:28px}
+.footer-bottom p{margin-bottom:0}
+.footer-navigation{display:flex;gap:24px;font-size:12px}
+.footer-bottom>small{text-align:right}
+@media(max-width:1000px){.footer-contact{grid-template-columns:1fr;gap:24px}.footer-contact-intro h2,.footer-contact-intro p{max-width:600px}}
+@media(max-width:600px){.footer-contact-links{grid-template-columns:1fr}.footer-contact-card{padding:16px}.footer-bottom{flex-wrap:wrap}.footer-bottom>small{width:100%;text-align:left}.footer-navigation{flex-wrap:wrap;gap:16px}}
