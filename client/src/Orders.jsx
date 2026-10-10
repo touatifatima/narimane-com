@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RefreshCw, Download } from 'lucide-react';
 import OrderItem from './OrderItem';
-import { money, statusLabels } from './api';
+import { money, statusLabels, imageUrl } from './api';
 
 const transitions = {
   new: ['confirmed', 'cancelled'], confirmed: ['shipped', 'cancelled'],
@@ -13,6 +13,29 @@ export default function Orders({ request, target }) {
   const [selectedIds, setSelectedIds] = useState([]), [status, setStatus] = useState('');
   const [search, setSearch] = useState(''), [page, setPage] = useState(1), [more, setMore] = useState(false);
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [tick, setTick] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+
+  async function downloadMotif() {
+    if (downloading || !selectedOrder?.customization_image_url) return;
+    const order = selectedOrder;
+    setDownloading(true); setError('');
+    try {
+      const response = await fetch(imageUrl(order.customization_image_url));
+      if (!response.ok) throw new Error('Image indisponible. Réessayez dans un instant.');
+      const blob = await response.blob();
+      if (!blob.size || !blob.type.startsWith('image/')) throw new Error('Le fichier reçu n’est pas une image valide.');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `motif-commande-${order.id}.webp`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch {
+      setError('Impossible de télécharger le motif. Réessayez ou utilisez « Ouvrir l’image ».');
+    } finally { setDownloading(false); }
+  }
 
   useEffect(() => {
     let active = true;
@@ -66,7 +89,7 @@ export default function Orders({ request, target }) {
       <button className="text-link" onClick={() => setSelectedOrder(null)}><ArrowLeft size={16} /> Toutes les commandes</button>
       <div className="section-heading"><h3>Commande #{selectedOrder.id}</h3><span className={`badge ${selectedOrder.status}`}>{statusLabels[selectedOrder.status]}</span></div>
       <small className="reference">{selectedOrder.reference}</small>
-      <div className="admin-columns"><div><h3>{selectedOrder.customer_name}</h3><p>{selectedOrder.phone}</p><p>{selectedOrder.address}<br />{selectedOrder.commune}, {selectedOrder.wilaya}</p>{selectedOrder.notes && <p>Note : {selectedOrder.notes}</p>}</div><div>{selectedOrder.order_items.map(item => <OrderItem key={item.id} item={item} />)}<div className="total-row"><span>Livraison</span><span>{money(selectedOrder.delivery_fee)}</span></div><div className="total-row"><b>Total à payer</b><b>{money(selectedOrder.total)}</b></div></div></div>
+      <div className="admin-columns"><div><h3>{selectedOrder.customer_name}</h3><p>{selectedOrder.phone}</p><p>{selectedOrder.address}<br />{selectedOrder.commune}, {selectedOrder.wilaya}</p>{selectedOrder.notes && <p>Note : {selectedOrder.notes}</p>}{selectedOrder.customization_image_url && <div className="order-customization"><b>Image de r&eacute;f&eacute;rence &middot; {selectedOrder.customization_product_name}</b><a href={imageUrl(selectedOrder.customization_image_url)} target="_blank" rel="noreferrer"><img src={imageUrl(selectedOrder.customization_image_url)} alt={`Motif de personnalisation pour ${selectedOrder.customization_product_name}`} /><span>Ouvrir l&rsquo;image</span></a><button type="button" className="secondary" disabled={downloading} onClick={downloadMotif}><Download size={16} />{downloading ? 'Téléchargement...' : 'Télécharger le motif'}</button></div>}</div><div>{selectedOrder.order_items.map(item => <OrderItem key={item.id} item={item} />)}<div className="total-row"><span>Livraison</span><span>{money(selectedOrder.delivery_fee)}</span></div><div className="total-row"><b>Total à payer</b><b>{money(selectedOrder.total)}</b></div></div></div>
       <div className="choices">{transitions[selectedOrder.status].map(next => <button disabled={busy} className={next === 'cancelled' ? 'secondary danger' : 'primary'} key={next} onClick={() => change(next)}>{next === 'cancelled' ? 'Annuler la commande' : next === 'returned' ? 'Confirmer le retour reçu' : `Marquer : ${statusLabels[next]}`}</button>)}</div>
     </div> : <>
       <div className="catalog-toolbar"><input placeholder="Nom ou téléphone…" aria-label="Rechercher une commande" value={search} onChange={event => { setSearch(event.target.value); setPage(1); setSelectedIds([]); }} /><select aria-label="Filtrer par statut" value={status} onChange={event => { setStatus(event.target.value); setPage(1); setSelectedIds([]); }}><option value="">Tous les statuts</option>{Object.entries(statusLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div>

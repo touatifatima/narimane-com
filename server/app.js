@@ -52,6 +52,14 @@ module.exports = function createApp(prisma) {
 
   app.use((req, res) => res.status(404).json({ error: 'Route not found.' }));
   app.use((error, req, res, next) => {
+    if (error.name === 'MulterError') {
+      return res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+        error: error.code === 'LIMIT_FILE_SIZE' ? 'Reference image must be 3.5 MB or smaller.' : 'Invalid reference image upload.',
+      });
+    }
+    if (Number.isInteger(error.status) && error.status >= 400 && error.status < 500) {
+      return res.status(error.status).json({ error: error.message });
+    }
     if (error.type === 'entity.parse.failed') {
       return res.status(400).json({ error: 'Invalid JSON body.' });
     }

@@ -1,7 +1,7 @@
 const express = require('express');
 
 const selection = {
-  id: true, name: true, description: true, price: true, image_url: true,
+  id: true, name: true, description: true, price: true, image_url: true, customization_enabled: true,
   images: { orderBy: [{ position: 'asc' }, { id: 'asc' }], select: { id: true, url: true, position: true } },
   product_variants: {
     where: { is_active: true },

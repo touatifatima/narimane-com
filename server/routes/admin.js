@@ -2,6 +2,7 @@ const express = require('express');
 const { randomBytes, createHash } = require('node:crypto');
 const { limiter: sharedLimiter } = require('../lib/rate-limits');
 const { verifyPassword } = require('../lib/passwords');
+const storage = require('../storage');
 const digest = token => createHash('sha256').update(token).digest('hex');
 const transitions = {
   new: ['confirmed', 'cancelled'], confirmed: ['shipped', 'cancelled'],
@@ -9,7 +10,7 @@ const transitions = {
 };
 const orderSelect = {
   id: true, reference: true, customer_name: true, phone: true, wilaya: true,
-  commune: true, address: true, notes: true, status: true, subtotal: true,
+  commune: true, address: true, notes: true, customization_product_name: true, customization_image_url: true, status: true, subtotal: true,
   delivery_fee: true, total: true, created_at: true, payment_method: true,
 };
 
@@ -84,7 +85,7 @@ module.exports = function adminRoutes(db) {
     try {
       const result = await db.$transaction(async tx => {
         const orders = await tx.orders.findMany({ where: { id: { in: ids } },
-          select: { id: true, status: true, order_items: { select: { variant_id: true, quantity: true } } } });
+          select: { id: true, status: true, customization_image_url: true, order_items: { select: { variant_id: true, quantity: true } } } });
         if (orders.length !== ids.length) return { error: 'One or more orders no longer exist. Refresh the list.', status: 404 };
         const stockToRestore = new Map();
         for (const order of orders) {
@@ -101,10 +102,13 @@ module.exports = function adminRoutes(db) {
         // Notifications and their read receipts cascade from the orders table.
         const deleted = await tx.orders.deleteMany({ where: { id: { in: ids } } });
         if (deleted.count !== ids.length) throw new Error('Orders changed during deletion.');
-        return { deleted: deleted.count, restocked: orders.filter(order => ['new', 'confirmed'].includes(order.status)).length };
+        return { deleted: deleted.count, restocked: orders.filter(order => ['new', 'confirmed'].includes(order.status)).length, imageUrls: orders.map(order => order.customization_image_url).filter(Boolean) };
       }, { isolationLevel: 'Serializable', timeout: 15000 });
       if (result.error) return res.status(result.status).json({ error: result.error });
-      res.json(result);
+      const removedImages = await Promise.allSettled(result.imageUrls.map(url => storage.remove(url)));
+      const failedImages = removedImages.filter(item => item.status === 'rejected').length;
+      if (failedImages) console.error('Some deleted order reference images could not be removed:', failedImages);
+      res.json({ deleted: result.deleted, restocked: result.restocked });
     } catch (error) {
       if (error.code === 'P2034') return res.status(409).json({ error: 'Orders changed. Refresh and try again.' });
       throw error;

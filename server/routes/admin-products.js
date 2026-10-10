@@ -19,7 +19,7 @@ function stock(value) {
   return value;
 }
 function productData(body, create) {
-  object(body, ['name', 'description', 'price', 'image_url', 'is_active', ...(create ? ['variants'] : [])]);
+  object(body, ['name', 'description', 'price', 'image_url', 'is_active', 'customization_enabled', ...(create ? ['variants'] : [])]);
   const data = {};
   if (create || body.name !== undefined) data.name = text(body.name, 150);
   if (body.description !== undefined) data.description = text(body.description, 5000, true);
@@ -38,6 +38,7 @@ function productData(body, create) {
     }
   }
   if (body.is_active !== undefined) data.is_active = boolean(body.is_active);
+  if (body.customization_enabled !== undefined) data.customization_enabled = boolean(body.customization_enabled);
   if (!create && !Object.keys(data).length) throw new InputError('Provide a field to update.');
   return data;
 }
