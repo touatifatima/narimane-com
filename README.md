@@ -41,12 +41,7 @@ Hero photography is decorative; it does not represent available inventory.*
 
 ### Manage the store
 
-- Sign in at `/admin` with an administrator account created from the command line.
-- Create and edit products, variants, stock, visibility, and product photos.
-- Configure delivery fees and availability by wilaya.
-- Search orders and move them through confirmation, shipping, and delivery.
-- Cancel eligible orders or record a received return, restoring stock once.
-- Follow new orders and status changes through in-app notifications with per-admin read state.
+
 
 ### Behind the checkout
 
@@ -73,12 +68,12 @@ tshirt-ecommerce/
 │   ├── public/images/       # Storefront hero artwork
 │   ├── src/                # Storefront, cart, checkout, and admin UI
 │   ├── tests/              # Playwright browser checks
-│   └── vercel.json         # API proxy and admin route rewrites
+│   └── vercel.json      
 ├── server/
-│   ├── api/                # Vercel serverless entry point
-│   ├── routes/             # Public and authenticated API routes
-│   ├── prisma/             # Database schema and migrations
-│   ├── scripts/            # Admin setup, delivery seed, and integration checks
+│   ├── api/                
+│   ├── routes/          
+│   ├── prisma/             
+│   ├── scripts/            
 │   └── storage.js          # Product image storage
 ├── docs/images/            # README screenshots
 └── render.yaml             # Alternative Render deployment blueprint
@@ -131,8 +126,7 @@ npm run db:deploy
 npm run admin:create
 ```
 
-The interactive admin command asks for an email and a hidden password of 12–128
-characters. No default admin account is created.
+ No default admin account is created.
 
 Optionally populate the delivery settings:
 
@@ -172,27 +166,9 @@ npm run dev
 Vite forwards `/api` requests to port `3000` by default. Add products, variants,
 stock, and delivery rates in the dashboard to complete the shopping flow.
 
-## Configuration
+#
 
-Server values belong in `server/.env` locally or in your backend host's environment settings.
-
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string, including any provider-required SSL options |
-| `PORT` | Local API port; defaults to `3000` |
-| `CLIENT_URL` | Allowed frontend origin; defaults to `http://localhost:5173` |
-| `SUPABASE_URL` | Supabase project URL for hosted product photos |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only Supabase key for photo uploads and deletion |
-| `SUPABASE_STORAGE_BUCKET` | Public image bucket name; defaults to `product-images` |
-
-Create the public storage bucket before uploading photos with Supabase enabled.
-Keep credentials out of Git and out of frontend variables.
-
-Frontend configuration is optional: set `VITE_API_URL` in `client/.env` to call a
-separate backend directly. Leave it empty to use the `/api` proxy. Vite reads this
-value at build time, so rebuild after changing it. For a different local API port,
-set `API_PROXY_TARGET` in the environment when starting Vite.
-
+n
 ## Useful commands
 
 Run each command from the directory shown.
@@ -217,7 +193,7 @@ create temporary records, so configure `server/.env` accordingly.
 cd server
 npm run test:products
 npm run test:orders
-npm run test:admin
+
 ```
 
 For browser checks, from the repository root:
