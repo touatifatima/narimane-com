@@ -211,25 +211,9 @@ The suite covers storefront and admin behavior and writes artifacts to `client/t
 
 The repository includes Vercel configurations for two projects:
 
-1. **Backend:** select `server` as the root directory, configure the database and
-   Supabase variables, and set `CLIENT_URL` to your frontend's origin. The
-   `vercel-build` script applies database migrations.
-2. **Frontend:** select `client` as the root directory, build with `npm run build`,
-   and use `dist` as the output directory.
-3. **Connect them:** update the `/api/:path*` destination in `client/vercel.json`
-   to your backend URL. The checked-in destination is project-specific. Alternatively,
-   set `VITE_API_URL` before building and configure backend `CLIENT_URL` accordingly.
-4. **Verify:** check `/api/health/db`, sign in at `/admin`, then verify products,
-   photo uploads, delivery settings, and an intentional test order.
 
-Use Supabase Storage for Vercel photo uploads; local files are not persistent there.
-Use a separate database for preview deployments because builds run migrations.
-The `/admin` rewrite supports direct navigation to the dashboard; API authentication
-controls access to store data.
 
-For a single-service setup, build `client/dist` before starting the server. Express
-serves that build when it exists. `render.yaml` provides an alternative deployment
-blueprint; configure persistent image storage for that host as well.
+
 
 ## Scope
 
